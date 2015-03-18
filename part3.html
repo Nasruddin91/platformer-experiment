@@ -1,0 +1,1075 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<!-- <script src="Sprites5.8.js"></script> //-->
+<title>Untitled Document</title>
+<script>
+	var W;
+	var H;
+	var bgW=3000;
+	var bgH=750;
+	var bgScale = 10;
+	var ball;
+	var map1;
+	var map0;
+	var map2;
+	var map3;
+	var mapT;
+	var mapC;
+	
+	var canvas;
+	var ctx;
+	var scrollVal=0;
+	var g=1;
+	var dt = 1;
+	var wall;
+	var UP = 87;
+	var LEFT= 65;
+	var RIGHT = 68;
+	var DOWN = 83;
+	var JUMP = 32;
+	var toggleMenu = false;
+	
+	var keyMap = {65:false, 68:false, 32:false, 27:false};
+	var timerID;
+	var tick=15;
+	var time=0;
+	var timeSplit = 1000/tick;
+	var timeStep = 0;
+	
+	
+	var static = ["static/static0.png","static/static1.png","static/static2.png",'static/static3.png','static/static4.png','static/static5.png','static/static6.png','static/static7.png','static/static8.png','static/static9.png'];
+	var fireAni = ["fire/fire0.png","fire/fire1.png","fire/fire2.png",'fire/fire3.png','fire/fire4.png','fire/fire5.png','fire/fire6.png','fire/fire7.png','fire/fire8.png','fire/fire9.png'];
+	/////////////////////////////////////////////////////////////////////////images
+	var walkRight = ['walkRight/walk0.png','walkRight/walk1.png','walkRight/walk2.png','walkRight/walk3.png','walkRight/walk4.png','walkRight/walk5.png','walkRight/walk6.png','walkRight/walk7.png','walkRight/walk8.png','walkRight/walk9.png']
+	var walkLeft = ['walkLeft/walk0.png','walkLeft/walk1.png','walkLeft/walk2.png','walkLeft/walk3.png','walkLeft/walk4.png','walkLeft/walk5.png','walkLeft/walk6.png','walkLeft/walk7.png','walkLeft/walk8.png','walkLeft/walk9.png']
+	var standLeft = ['standLeft/stand0.png','standLeft/stand1.png','standLeft/stand2.png','standLeft/stand3.png','standLeft/stand4.png','standLeft/stand5.png','standLeft/stand6.png','standLeft/stand7.png','standLeft/stand8.png','standLeft/stand9.png'];
+	var standRight = ['standRight/stand0.png','standRight/stand1.png','standRight/stand2.png','standRight/stand3.png','standRight/stand4.png','standRight/stand5.png','standRight/stand6.png','standRight/stand7.png','standRight/stand8.png','standRight/stand9.png'];
+	var jmpRight = ['jmpRight/jmp0.png','jmpRight/jmp0.png','jmpRight/jmp0.png','jmpRight/jmp0.png','jmpRight/jmp0.png','jmpRight/jmp0.png','jmpRight/jmp0.png','jmpRight/jmp0.png','jmpRight/jmp0.png','jmpRight/jmp0.png'];
+	var jmpLeft = ['jmpLeft/jmp0.png','jmpLeft/jmp0.png','jmpLeft/jmp0.png','jmpLeft/jmp0.png','jmpLeft/jmp0.png','jmpLeft/jmp0.png','jmpLeft/jmp0.png','jmpLeft/jmp0.png','jmpLeft/jmp0.png','jmpLeft/jmp0.png'];
+	var ghost = ["ghost/ghost0.png","ghost/ghost1.png","ghost/ghost2.png",'ghost/ghost3.png','ghost/ghost4.png','ghost/ghost5.png','ghost/ghost6.png','ghost/ghost7.png','ghost/ghost8.png','ghost/ghost9.png'];
+	/////////////////////////////////////////////////////////////////////////
+	
+	///////////////////////////////////trigger//////////////////////////////////
+	function createTriggerBox(x,y,width,height,map){
+		var me = {};
+		me.x = x;
+		me.y = y;
+		me.width = width;
+		me.height = height;
+		me.onTrigger = function(obj){}
+		return me;
+		}
+		
+	function triggerLevel(obj,map,method){
+		var me = createTriggerBox(obj.x,obj.y,obj.width,obj.height,map);
+		me.onTrigger = function(obj){
+			if(me.x - obj.x<=0&&(me.x +me.width)-(obj.x + obj.width)>=0&&me.y-obj.y<=0&&(me.y+me.height)-(obj.y+obj.height)>=0){
+				sound("turn_knob");
+				method();
+				}
+			}
+		map.triggerKeys.push(me);
+		}
+		
+		
+	//////////////////////////////////////////////////////////////////////////////////////
+	
+	function createMap(imgSrc,width,height){
+		var me = {};
+		me.x = 0;
+		me.y = 0;
+		me.img = new Image();
+		me.img.src = imgSrc;
+		me.img.width = width;
+		me.img.height = height;
+		me.move = function(){};
+		me.list = [];
+		me.triggerKeys = [];
+		me.anime = [];
+		me.foreGround = [];
+		me.texts = [];
+		me.BGObjects = [];
+		me.leftBorder = canvas.width/2;
+		me.rightBorder = bgW - canvas.width/2;
+		//canvasTemp.width = bgImg.width;
+		//canvasTemp.height = bgImg.height;
+		return me;
+		}
+		
+	function setObj(map, object){
+		map.list.push(object);
+		}
+		
+		
+	function render(map){
+		ctx.clearRect(0,0,W,H);//main display
+		ctx.drawImage(map.img, 0-scrollVal, 0, map.img.width, map.img.height);
+		timeStep+=1;
+		if(timeStep==timeSplit){
+				time+=1;
+				timeStep=0;
+			}
+		
+		for(var i=0; i< map.list.length; i++){
+			for(var j=0; j<map.list.length; j++){
+				if(map.list[i]!=map.list[j]&&map.list[i].type!="uninteractable"){
+					map.list[i].collide(map.list[j]);
+				}
+				}
+			}
+			for(var i=0; i<map.BGObjects.length;i++){
+				ctx.drawImage(map.BGObjects[i].img, map.BGObjects[i].x-scrollVal, map.BGObjects[i].y,map.BGObjects[i].img.width, map.BGObjects[i].img.height);
+			}
+			
+			
+			for(var i=0; i<map.anime.length;i++){
+				
+				ctx.drawImage(map.anime[i].img, map.anime[i].x-scrollVal, map.anime[i].y,map.anime[i].img.width, map.anime[i].img.height);
+				map.anime[i].animate();
+			}
+			
+			
+		
+		for(var i=0;i<map.list.length;i++){
+				ctx.save();
+				ctx.translate(map.list[i].x-scrollVal,map.list[i].y);
+				ctx.rotate(map.list[i].rad);
+				ctx.translate(-map.list[i].x+scrollVal,-map.list[i].y);
+				ctx.drawImage(map.list[i].img, map.list[i].x-scrollVal, map.list[i].y,map.list[i].img.width, map.list[i].img.height);
+				ctx.restore();
+				if(map.list[i].animate==null){
+					map.list[i].move();
+				}else{
+					map.list[i].move();
+					map.list[i].animate();
+					}
+			}
+			
+			
+			
+		for(var i=0; i<map.texts.length;i++){
+				ctx.font = map.texts[i].font;
+				ctx.fillStyle = map.texts[i].color;
+				
+				ctx.fillText(map.texts[i].text, map.texts[i].x-scrollVal*1.2, map.texts[i].y);
+				map.texts[i].move();
+			}
+		
+		for(var i=0; i<map.foreGround.length;i++){
+			ctx.drawImage(map.foreGround[i].img, map.foreGround[i].x-scrollVal*1.5, map.foreGround[i].y,map.foreGround[i].img.width, map.foreGround[i].img.height)
+			
+			}
+			
+		
+			
+		
+		for(var i=0;i<map.triggerKeys.length;i++){
+				map.triggerKeys[i].onTrigger(map.char);
+			}
+		
+		}
+	
+	function createObj(x,y, vx ,vy, imgSrc,width,height){
+		var me={};
+		me.width = width;
+		me.height = height;
+		me.x = x;
+		me.y = y;
+		me.vx = vx;
+		me.vy = vy;
+		me.rad =0 ;
+		me.bounce =0;
+		me.img = new Image();
+		me.img.src = imgSrc;
+		me.img.width = width;
+		me.img.height= height;
+		me.move = function(){};
+		me.collide = function(obj){};
+		me.elast = 0.9;
+		return me;
+	}
+	
+	function BGObj(x,y,img,width,height,map){
+		var me = {};
+		me.x = x;
+		me.y = y;
+		me.width = width;
+		me.height = height;
+		me.img = new Image();
+		me.img.src = img;
+		me.img.width = width;
+		me.img.height= height;
+		map.BGObjects.push(me);
+		return me;
+		}
+	
+	
+	function gun(x,y,imgSrcGun,imgSrcBullet,width,height,map){
+		var me = new createObj(x,y,0,0,imgSrcGun,width,height);
+		me.dx=1;
+		me.dy=1;
+		me.rad=0;
+		me.shootSpeed = 2;
+		me.uvm = 1;
+		me.type = "gun";
+		me.collide = function(){};
+		canvas.onmousemove = function(e){
+			var x = e.pageX;
+			var y = e.pageY;
+			me.dx = x - me.x + scrollVal;
+			me.dy = y - me.y;
+			me.rad = -Math.atan(me.dx/me.dy) - (0.5)*Math.PI;
+			if(me.dy>0){
+				me.rad+=Math.PI;
+				}
+		}
+		canvas.onmousedown = function(){
+			me.shoot();
+		}
+		me.shoot = function(){
+			var sound = new Audio("audio/shoot.wav");
+			sound.play();
+			me.uvm = Math.sqrt(Math.abs(me.dx)^2 + Math.abs(me.dy)^2);
+			var bullet = new bullets(me.x+me.dx/me.uvm,me.y+me.dy/me.uvm,(me.dx/me.uvm)*me.shootSpeed,(me.dy/me.uvm)*me.shootSpeed,imgSrcBullet,me.width*0.3,me.height*0.3,map);
+		}
+		map.list.push(me);
+		//setObj(map,me);
+		return me;
+	}
+		
+	function bullets(x,y,vx,vy,imgSrc,width,height,map){
+		var me = new createObj(x,y,vx,vy,imgSrc,width,height);
+		me.type = "bullets";
+		me.move = function(){
+			me.x = me.x+ me.vx;
+			me.vy = me.vy + g*0.5;
+			me.y = me.y + me.vy;
+			
+			if(me.x<0||me.x>bgW+me.width||me.y<0){
+				me.explode();
+			}else if(me.y>bgH-me.height){
+				me.explode();
+				}
+		}
+			
+		me.explode = function(){
+			var index = map.list.indexOf(me);
+			map.list.splice(index,1);
+			createParticles(me.x,me.y,4,"ball.png",me.width/4,me.height/4,map);
+		}		
+		me.collide = function(obj){
+			var bufy = obj.height*0.3;
+			var bufx = obj.width*0.3;
+			if(me.y + me.height>=obj.y&& me.y + me.height<= obj.y+bufy){//hit top
+				if(me.x + me.width< obj.x +  obj.width&&me.x + me.width>obj.x || me.x>obj.x&&me.x<obj.x+obj.width){
+					
+					if(obj.type!="gun"&&obj.type!="char"){
+						me.explode();
+						var snd = new Audio("audio/bounce.wav");
+						snd.play();
+					}
+					if(obj.type == "pushable"){
+						obj.health-=1;
+						}
+				}
+			}
+			else if(me.y<= obj.y + obj.height&&me.y>= obj.y+obj.height-bufy){
+				if(me.x + me.width< obj.x +  obj.width&&me.x + me.width>obj.x || me.x>obj.x&&me.x<obj.x+obj.width){
+					if(obj.type!="gun"&&obj.type!="char"){
+						me.explode();
+						var snd = new Audio("audio/bounce.wav");
+						snd.play();
+					}
+					if(obj.type == "pushable"){
+						obj.health-=1;
+						}
+				}
+			}
+			else if(me.x + me.width>= obj.x&& me.x + me.width<= obj.x+bufx){
+				if(me.y+me.height> obj.y && me.y + me.height< obj.y + obj.height||me.y > obj.y && me.y< obj.y + obj.height){
+					if(obj.type!="gun"&&obj.type!="char"){
+						me.explode();
+						var snd = new Audio("audio/bounce.wav");
+						snd.play();
+					}
+					if(obj.type == "pushable"){
+						obj.health-=1;
+						}
+				}
+			}
+			
+			else if(me.x>=obj.x + obj.width - bufx&& me.x <= obj.x + obj.width){
+				if(me.y+me.height> obj.y  && me.y + me.height< obj.y + obj.height||me.y > obj.y && me.y< obj.y + obj.height){
+					if(obj.type!="gun"&&obj.type!="char"){
+						me.explode();
+						var snd = new Audio("audio/bounce.wav");
+						snd.play();
+					}
+					if(obj.type == "pushable"){
+						obj.health-=1;
+						}
+				}
+			}
+			
+		}
+		map.list.push(me);
+	}
+	
+	function particle(x,y,vx,vy,imgSrc,width,height,map){
+		var me = createObj(x,y,vx,vy,imgSrc,width,height);
+		me.bounce = 0;
+		me.maxBounce = 10;
+		me.move = function(){
+			me.x = me.x+ me.vx;
+			me.vy = me.vy + g*0.2;
+			me.y = me.y + me.vy;
+			if(me.x<0||me.x>bgW+me.width||me.y<0){
+				me.explode();
+			}else if(me.y>bgH-me.height){
+				me.vy = -me.vy;
+				me.y = bgH-me.height;
+				me.bounce +=1;
+				}
+		}
+		
+		me.collide = function(obj){
+			var bufy = obj.height*0.3;
+			var bufx = obj.width*0.3;
+			if(me.y + me.height>=obj.y&& me.y + me.height<= obj.y+bufy){//hit top
+				if(me.x + me.width< obj.x +  obj.width&&me.x + me.width>obj.x || me.x>obj.x&&me.x<obj.x+obj.width){
+					if(obj.type!="enemy"&&obj.type!="char"){
+						me.vy=-me.vy;
+						me.y = obj.y -me.height;
+						me.bounce+=1;
+					}
+				}
+			}
+			else if(me.y<= obj.y + obj.height&&me.y>= obj.y+obj.height-bufy){
+				if(me.x + me.width< obj.x +  obj.width&&me.x + me.width>obj.x || me.x>obj.x&&me.x<obj.x+obj.width){
+					if(obj.type!="enemy"&&obj.type!="char"){
+						me.vy=-me.vy;
+						me.y = obj.y + obj.height;
+					}
+				}
+			}
+			else if(me.x + me.width>= obj.x&& me.x + me.width<= obj.x+bufx){
+				if(me.y+me.height> obj.y && me.y + me.height< obj.y + obj.height||me.y > obj.y && me.y< obj.y + obj.height){
+					if(obj.type!="enemy"&&obj.type!="char"){
+						me.x = obj.x - me.width;
+						me.vx = -me.vx;
+					}
+				}
+			}
+			
+			else if(me.x>=obj.x + obj.width - bufx&& me.x <= obj.x + obj.width){
+				if(me.y+me.height> obj.y  && me.y + me.height< obj.y + obj.height||me.y > obj.y && me.y< obj.y + obj.height){
+					if(obj.type!="enemy"&&obj.type!="char"){
+						me.x = obj.x + obj.width;
+						me.vx = -me.vx;
+					}
+				}
+			}
+			if(me.bounce>=me.maxBounce){
+				me.explode();
+				}
+		}
+		
+		me.explode = function(){
+			var index = map.list.indexOf(me);
+			map.list.splice(index,1);
+		}
+		setObj(map,me);
+		
+		}
+	
+	function createParticles(x,y,amount,imgSrc,width,height,map){
+		var vx;
+		var vy;
+		for(var i=0; i<amount; i++){
+			vx = Math.random()*3;
+			vy = Math.random()*3;
+				particle(x,y,vx,vy,imgSrc,width,height,map);
+			}
+		}
+		
+	function createWall(x,y, imgSrc,width, height, map){
+		var me = new createObj(x,y,0,0,imgSrc, width,height);
+		me.collide = function(){}
+		me.type  ="uninteractable";
+		setObj(map, me);
+		return me;
+		}
+		
+	function pushable(x,y, imgSrc,width, height, map){
+		var me = new createObj(x,y,0,0, imgSrc,width, height, map);
+		me.health = 5;
+		me.type = "pushable";
+		me.move = function(){
+			me.vx = me.vx*0.7;
+			me.x = me.x+ me.vx;
+			if(me.vx<0.5&&me.vx>0){
+					me.vx = 0;
+				}
+			me.vy = me.vy + g;
+			me.y = me.y + me.vy;
+			if(me.y>bgH-me.height){
+				me.vy=0;
+				me.y = bgH-me.height;
+				onGround = true;
+				}else if(me.y<0){
+					me.vy=-me.vy;
+					me.y = 0;
+					}
+			if(me.x<0){
+					me.vx = -me.vx;
+					me.x =0;
+				}else if(me.x>bgW-me.width){
+					me.vx = -me.vx;
+					me.x = bgW - me.width;
+					}
+			
+			}
+		me.collide = function(obj){
+			var bufy = obj.height*0.3;
+			var bufx = obj.width*0.3;
+			if(me.y + me.height>=obj.y&& me.y + me.height<= obj.y+bufy){
+				if(me.x + me.width< obj.x +  obj.width&&me.x + me.width>obj.x || me.x>obj.x&&me.x<obj.x+obj.width){
+					if(obj.type!="char"&&obj.type!="enemy"){
+						me.vy=0;
+						me.y = obj.y -me.height;
+					}else if(obj.type=="enemy"){
+						me.explode();
+					}
+					if(obj.type=="bullets"){
+						me.health -=1;
+					}
+				}
+			}
+			else if(me.y<= obj.y + obj.height&&me.y>= obj.y+obj.height-bufy){
+				if(me.x + me.width< obj.x +  obj.width&&me.x + me.width>obj.x || me.x>obj.x&&me.x<obj.x+obj.width){
+					if(obj.type!="char"&&obj.type!="enemy"){
+						me.vy=0;
+						me.y = obj.y + obj.height;
+					}else if(obj.type=="enemy"){
+						me.explode();
+					}
+				}
+			}
+			else if(me.x + me.width>= obj.x&& me.x + me.width<= obj.x+bufx){
+				if(me.y+me.height> obj.y && me.y + me.height< obj.y + obj.height||me.y > obj.y && me.y< obj.y + obj.height){
+					if(obj.type=="char"&&obj.type!="enemy"){
+						sound("drag");
+						me.vx = obj.vx*2;
+						obj.vx = -obj.vx;
+					}else if(obj.type=="enemy"){
+						me.explode();
+					}else{
+						me.x = obj.x - me.width;
+						me.vx = -me.vx;
+					}
+				}
+			}
+			
+			else if(me.x>=obj.x + obj.width - bufx&& me.x <= obj.x + obj.width){
+				if(me.y+me.height> obj.y  && me.y + me.height< obj.y + obj.height||me.y > obj.y && me.y< obj.y + obj.height){
+					if(obj.type=="char"&&obj.type!="enemy"){
+						sound("drag");
+						me.vx = obj.vx*2;
+						obj.vx = -obj.vx;
+					}else if(obj.type=="enemy"){
+						me.explode();
+						}else{
+						me.x = obj.x + obj.width;
+						me.vx = -me.vx;
+					}
+				}
+			}
+			
+			if(me.health<=0){
+				me.explode();
+				}
+		}
+		
+		
+		me.explode = function(){
+			sound("breaking_boxes");
+			var index = map.list.indexOf(me);
+			map.list.splice(index,1);
+			createParticles(me.x+me.width/2,me.y+me.height/2,10,"woodParticle.jpg",10,10,map);
+		}
+		map.list.push(me)
+		return me;
+		}
+		
+	function createAnimatedObj(x,y, vx ,vy, imgSrcArray,width,height,map){
+		var me = new createObj(x,y, vx ,vy, imgSrcArray[0],width,height);
+		me.i=0;
+		me.timeSplit=0;
+		me.imgSrc = imgSrcArray;
+		me.animate = function(){
+			me.timeSplit++;
+			if(me.timeSplit==5){
+				me.i+=1;
+				me.timeSplit=0;
+			}
+			if(me.i>me.imgSrc.length-1){
+				me.i=0;
+				}
+			me.img.src = me.imgSrc[me.i];
+			}
+		return me;
+		}
+		
+	function createBGAnimation(x,y, vx ,vy, imgSrcArray,width,height,map){
+		var me = createAnimatedObj(x,y, vx ,vy, imgSrcArray,width,height,map)
+		me.type = "uninteractable";
+		me.collide = function(){}
+		map.anime.push(me);
+		return me
+		}
+		
+	function foreGround(x,y, vx ,vy, imgSrc,width,height,map){
+		var me = createObj(x,y,vx,vy,imgSrc,width,height);
+		map.foreGround.push(me);
+		}
+		
+	function createEnemy(x,y, vx ,vy, imgSrcArray,width,height,map){
+		var me = createAnimatedObj(x,y,vx,vy,imgSrcArray,width,height);
+		me.type = "enemy";
+		me.move = function(){
+				me.x = me.x+me.vx;
+			}
+		me.collide = function(obj){};
+		setObj(map,me);
+		}
+		
+	function textObj(x,y,text,font,color,width,height,map){
+		var me = {};
+		me.x = x;
+		me.y = y;
+		me.font = font;
+		me.color = color;
+		me.text = text;
+		me.width = width;
+		me.height = height;
+		me.move = function(){}
+		return me;
+		}
+		
+	function textObjS(x,y,text,font,color,width,height,map){
+		var me = textObj(x,y,text,font,color,width,height,map);
+		map.texts.push(me);
+		return me;
+		}
+		
+	function scrollingText(x,y,vx,vy,text,font,color,width,height,map){
+		var me = textObj(x,y,text,font,color,width,height,map);
+		me.vx = vx;
+		me.vy = vy;
+		me.move = function(){
+			me.x = me.x + me.vx;
+			me.y = me.y + me.vy;
+			}
+		map.texts.push(me);
+		return me;
+		}
+		
+	
+	
+	function createChar(x,y, imgSrcArrayJR,imgSrcArrayJL,imgSrcArraySR,imgSrcArraySL,imgSrcArrayWalkRight,imgSrcArrayWalkLeft,width, height, map){
+		var me = new createAnimatedObj(x,y,0,0,imgSrcArraySR,width,height);
+		var onGround = true;
+		me.gun = new gun(me.x+me.width/2,me.y+me.height/3,"gun.png","ball.png",100,40,map);
+		me.step = 5;
+		me.g;
+		me.right = true;
+		me.type = "char";
+		me.move = function(){
+			me.x = me.x+ me.vx;
+			me.vx *=0.9;
+			if(Math.abs(me.vx)<0.5){
+				me.vx=0;
+				if(me.right==true){
+					me.imgSrc = imgSrcArraySR;
+				}else{
+					me.imgSrc = imgSrcArraySL;
+					}
+				}
+			me.vy = me.vy + g;
+			me.y = me.y + me.vy;
+			me.gun.x = me.x+me.width/2;
+			me.gun.y =me.y+me.height/3;
+			if(me.y>bgH-me.height){
+				me.vy=0;
+				me.y = bgH-me.height;
+				onGround = true;
+				}else if(me.y<0){
+					me.vy=-me.vy;
+					me.y = 0;
+					}
+			if(me.x<0){
+					me.vx = -me.vx;
+					me.x =0;
+				}else if(me.x>bgW-me.width){
+					me.vx = -me.vx;
+					me.x = bgW - me.width;
+					}
+			
+			if(me.x<=map.leftBorder||me.x>=map.rightBorder){
+					if(me.x<=map.leftBorder){
+						scrollVal=0;
+						}
+					else if(me.x>map.rightBorder){
+						scrollVal = bgW-canvas.width;
+						}
+					
+					if(keyMap[65]){
+						me.vx=-me.step;
+						if(onGround){
+
+							me.imgSrc = imgSrcArrayWalkLeft;
+							me.right=false;
+						}
+						}
+					else if(keyMap[68]){
+						me.vx=me.step;
+						if(onGround){
+
+							me.imgSrc = imgSrcArrayWalkRight;
+							me.right=true;
+						}
+						}
+					}
+				else{
+					if(keyMap[65]){
+						me.vx=-me.step;
+						scrollVal=me.x-canvas.width/2;
+						if(onGround){
+							me.imgSrc = imgSrcArrayWalkLeft;
+							me.right=false;
+						}
+						}
+					else if(keyMap[68]){
+						me.vx=me.step;
+						scrollVal=me.x-canvas.width/2;
+						if(onGround){
+							me.imgSrc = imgSrcArrayWalkRight;
+							me.right = true;
+						}
+						}
+					}
+				if(keyMap[32]){
+					if(onGround==true){
+						if(me.right==true){
+							me.imgSrc = imgSrcArrayJR;
+						}else{
+							me.imgSrc = imgSrcArrayJL
+							}
+						me.vy=-20;
+						me.y-=10;
+						onGround = false;
+					}
+				
+				}
+		}
+		
+		me.collide = function(obj){
+			var bufy = obj.height*0.25;
+			var bufx = obj.width*0.25;
+			if(me.y + me.height>=obj.y&& me.y + me.height<= obj.y+bufy&&obj.type!="bullets"){
+				if(me.x + me.width< obj.x +  obj.width&&me.x + me.width>obj.x || me.x>obj.x&&me.x<obj.x+obj.width){
+					me.vy=0;
+					me.y = obj.y -me.height;
+					onGround = true
+				}
+			}
+			else if(me.x + me.width>= obj.x&& me.x + me.width<= obj.x+bufx&&obj.type!="bullets"){
+				if(me.y+me.height> obj.y && me.y + me.height< obj.y + obj.height||me.y > obj.y && me.y< obj.y + obj.height){
+					me.x = obj.x - me.width;
+				}
+			}
+			else if(me.y<= obj.y + obj.height&&me.y>= obj.y+obj.height-bufy&&obj.type!="bullets"){
+				if(me.x + me.width< obj.x +  obj.width&&me.x + me.width>obj.x || me.x>obj.x&&me.x<obj.x+obj.width){
+					me.vy=0;
+					me.y = obj.y + obj.height;
+					onGround = true;
+				}
+			}
+			else if(me.x>=obj.x + obj.width - bufx&& me.x <= obj.x + obj.width&&obj.type!="bullets"){
+				if(me.y+me.height> obj.y && me.y + me.height< obj.y + obj.height||me.y > obj.y+ bufy && me.y< obj.y + obj.height){
+					me.x = obj.x + obj.width;
+					if(obj.type=="enemy"){
+						sound("gasp");
+						loadGameOver();
+						
+						}
+				}
+			}
+		}
+				
+		
+		
+		setObj(map, me);
+		map.char = me;
+		return me;
+	}
+	
+	
+	function sound(soundobj) {
+  		var thisSound=document.getElementById(soundobj);
+  		thisSound.volume = 1;
+ 		thisSound.play();
+	}
+	
+	function music(soundObj){
+		var thisSound=document.getElementById(soundObj);
+  		thisSound.volume = 0.5;
+		thisSound.loop = true;
+ 		thisSound.play();
+		}
+	
+	function initTime(){
+		time = 0;
+		timeStep=0;
+		}
+		
+	
+	
+
+		
+	
+	
+
+</script>
+
+<script>
+function init(){
+	music("mainSong");
+	canvas = document.getElementById("myCanvas");
+	ctx= canvas.getContext('2d');
+	canvas.height = bgH;
+	W = canvas.width;
+	H = canvas.height;
+	loadMainMenu();
+	}
+	
+	function loadMainMenu(){
+		window.clearInterval(timerID);
+		map0=null;
+		map1 = null;
+		map2 = null;
+		map3 = null;
+		mapT = null;
+		mapC=null;
+		scrollVal=0;
+		MainMenu();
+		}
+	
+	function MainMenu(){
+		map0 = createMap("plainBG.png",bgW, bgH);
+		textObjS(550,300, "The Running Man", "100px Times New Roman Italic","black", 500,100,map0);
+		createBGAnimation(225,bgH - 300, 0 ,0, walkRight,150,300,map0);
+		clickText = textObjS(700,400, "Play", "50px Times New Roman Italic", "black",500,50,map0);
+		clickText2 = textObjS(700,500, "Credits", "50px Times New Roman Italic", "black",500,50,map0);
+		timerID = window.setInterval(function() { render(map0); },tick);
+		document.onmousedown=function(e){
+			var x = e.pageX;
+			var y = e.pageY;
+			if(clickText.x - x<0&&clickText.x + clickText.width - x>0&&clickText.y - y-20<=0&&clickText.y + clickText.height -30 - y>=0){
+				loadTutorial();
+				}
+			if(clickText2.x - x<0&&clickText2.x + clickText2.width - x>0&&clickText2.y - y-20<=0&&clickText2.y + clickText2.height -30 - y>=0){
+				loadCredits();
+				}
+			}
+		
+		
+		}
+		
+	function loadTutorial(){
+		window.clearInterval(timerID);
+		map0=null;
+		map1 = null;
+		map2 = null;
+		map3 = null;
+		mapT = null;
+		maC = null;
+		scrollVal=0;
+		tutorial();
+		}
+		
+		
+	function tutorial(){
+			initTime();
+			var timesup=false;
+			mapT = createMap("plainBG.png",bgW, bgH);
+			door = BGObj(bgW-200,bgH - 700,"door.png",200,300,mapT);
+			char = createChar(150,bgH-50,jmpRight,jmpLeft,standRight,standLeft,walkRight,walkLeft,100,250,mapT);
+			textObjS(150,50,"Tutorial","80px Times New Roman Italic","black", 500,100,mapT);
+			textObjS(200,bgH-50,"A&D to move","50px Times New Roman Italic","black", 500,100,mapT);
+			
+			pushable(1200,bgH-600, "box.jpg",200,600,mapT);
+			textObjS(890,bgH-100,"Something in your way?","50px Times New Roman Italic","black", 500,100,mapT);
+			textObjS(890,bgH-500,"Use the mouse to aim.","50px Times New Roman Italic","black", 500,100,mapT);
+			textObjS(890,bgH-400,"Left mouse button to shoot!!","50px Times New Roman Italic","black", 500,100,mapT);
+			textObjS(950,bgH-50,"Shoot it!","50px Times New Roman Italic","black", 500,100,mapT);
+			
+			pushable(1600,bgH-150, "box.jpg",200,200,mapT);
+			textObjS(1500,bgH-400,"Push the box by walking against it.","50px Times New Roman Italic","black", 500,100,mapT);
+			
+			
+			
+			createWall(2500,bgH-400,"wallTall.jpg",500,400,mapT);
+			textObjS(2500,bgH-600,"Use the box to climb","50px Times New Roman Italic","black", 500,100,mapT);
+			textObjS(2500,bgH-500,"Press space to jump!","50px Times New Roman Italic","black", 500,100,mapT);
+
+			triggerLevel(door,mapT,loadLevel1);
+			
+			timerID = window.setInterval(function() { render(mapT); },tick);
+			
+			document.onmousedown = function(){};
+			
+			document.onkeydown = function(e){
+			if(e.keyCode in keyMap){
+				keyMap[e.keyCode]=true;
+			}
+			if(time>10&&timesup==false){
+				textObjS(2000,bgH-500,"You shot the box didn't you?","80px Times New Roman Italic","black", 500,100,mapT);
+				timesup=true
+				}
+			if(time>15){
+				loadTutorial();
+				}
+		}
+		
+		document.onkeyup = function(e){
+			if(e.keyCode in keyMap){
+				keyMap[e.keyCode]=false;
+				}
+			
+		}
+
+		}
+		
+	
+	function loadLevel1(){
+		
+		window.clearInterval(timerID);
+		map0=null;
+		map1 = null;
+		map2 = null;
+		map3 = null;
+		mapT = null;
+		mapC = null;
+		scrollVal=0;
+		level1();
+		}
+	
+	function level1(){
+			initTime();
+			map1 = createMap("lvl1.png",bgW, bgH);
+			createBGAnimation(225,bgH - 515, 0 ,0, fireAni,50,100,map1);
+			createBGAnimation(535,bgH - 515, 0 ,0, fireAni,50,100,map1);
+			createBGAnimation(885,bgH - 515, 0 ,0, fireAni,50,100,map1);
+			createBGAnimation(1200,bgH - 515, 0 ,0, fireAni,50,100,map1);
+			createBGAnimation(1565,bgH - 525, 0 ,0, fireAni,50,100,map1);
+			createBGAnimation(1915,bgH - 525, 0 ,0, fireAni,50,100,map1);
+			createBGAnimation(2263,bgH - 525, 0 ,0, fireAni,50,100,map1);
+			createBGAnimation(2620,bgH - 525, 0 ,0, fireAni,50,100,map1);
+			var windowDoor = BGObj(bgW-200,0,"window.png",200,350,map1);
+			char = createChar(150,bgH-50,jmpRight,jmpLeft,standRight,standLeft,walkRight,walkLeft,100,250,map1);
+			foreGround(1100,bgH-200,0,0,"rubbish.png",300,400,map1);
+			foreGround(1500,bgH-200,0,0,"rat.png",300,400,map1);
+			
+			
+			textObjS(bgW-1000,200,"There's a window!! Get in!","80px Times New Roman Italic","white", 500,100,map1);
+			textObjS(300,500,"Run!!!","80px Times New Roman Italic","white", 500,100,map1);
+			
+			pushable(1200,bgH-600, "box.jpg",200,130,map1);
+			pushable(1600,bgH-570, "box.jpg",250,170,map1);
+			pushable(1200,bgH-300, "box.jpg",300,300,map1);
+			pushable(bgW-300, bgH-600,"box.jpg", 300, 600, map1);
+
+			triggerLevel(windowDoor,map1,loadLevel2);
+			createWall(1600,0,"wallTall.jpg", 200, 450, map1);
+			createWall(900, bgH-380,"wallTall.jpg", 700, 80, map1);
+			createEnemy(-300,0,0.2,0,ghost, 300, bgH, map1);
+			
+			timerID = window.setInterval(function() { render(map1); },tick);
+			
+			document.onmousedown = function(){};
+			
+			document.onkeydown = function(e){
+			if(e.keyCode in keyMap){
+				keyMap[e.keyCode]=true;
+			}
+		}
+		
+		document.onkeyup = function(e){
+			if(e.keyCode in keyMap){
+				keyMap[e.keyCode]=false;
+				}
+			
+		}
+
+		}
+		
+	function loadLevel2(){
+		window.clearInterval(timerID);
+		map1=null;
+		map2=null;
+		map3=null;
+		mapT=null;
+		mapC = null;
+		scrollVal=0;
+		level2();
+		}
+		
+	function level2(){
+			initTime();
+			map2 = createMap("lvl2.png",bgW, bgH);
+			char = createChar(150,bgH-50,jmpRight,jmpLeft,standRight,standLeft,walkRight,walkLeft,100,200,map2);
+			door = BGObj(2400,bgH - 400,"door.png",200,400,map2);
+			textObjS(150,50,"That's a lot of boxes.......","80px Times New Roman Italic","black", 500,100,map2);
+			textObjS(1500,500,"Were they moving out?","80px Times New Roman Italic","black", 500,100,map2);
+			createBGAnimation(535,470,0,0,static,205,125,map2);
+			foreGround(750,-20,0,0,"ceilLamp.png", 150,250,map2);
+			foreGround(3000,-20,0,0,"ceilLamp.png", 150,250,map2);
+			createWall(1300,bgH - 370,"cupboard.png", 250,600,map2);
+			
+			
+			pushable(300,bgH - 500, "box.jpg", 200, 500,map2); 
+			pushable(500,bgH - 150, "box.jpg", 150, 150,map2); 
+			pushable(650,bgH - 300, "box.jpg", 150, 300,map2); 
+			pushable(950,bgH - 700, "box.jpg", 200, 700,map2); 
+			pushable(1700,bgH - 500, "box.jpg", 200, 500,map2); 
+			
+			
+			
+			triggerLevel(door,map2,loadCredits);
+			createEnemy(-300,0,0.4,0,ghost, 300, bgH, map2);
+			timerID = window.setInterval(function() { render(map2); },tick);
+			document.onmousedown = function(){};
+			
+			document.onkeydown = function(e){
+			if(e.keyCode in keyMap){
+				keyMap[e.keyCode]=true;
+			}
+		}
+		
+		document.onkeyup = function(e){
+			if(e.keyCode in keyMap){
+				keyMap[e.keyCode]=false;
+				}
+			
+		}
+		
+	}
+	
+	function loadCredits(){
+		window.clearInterval(timerID);
+		map1=null;
+		map2=null;
+		map3=null;
+		mapT=null;
+		mapC=null;
+		scrollVal=0;
+		credits();
+		}
+		
+	function credits(){
+		mapC = createMap("plainBG.png",bgW,bgH);
+		createBGAnimation(225,bgH - 300, 0 ,0, walkRight,150,300,mapC);
+		scrollingText(500,bgH + 100,0,-1,"Thanks for playing!","100px Times New Roman Italic","black", 500, 100, mapC);
+		scrollingText(500,bgH +200,0,-1,"Created by team awesome!.","80px Times New Roman Italic","black", 500, 100, mapC);
+		scrollingText(500,bgH + 300,0,-1,"Nasruddin","50px Times New Roman Italic","black", 500, 100, mapC);
+		scrollingText(500,bgH + 400,0,-1,"Salihan","50px Times New Roman Italic","black", 500, 100, mapC);
+		scrollingText(500,bgH + 500,0,-1,"Soe Lynn.","50px Times New Roman Italic","black", 500, 100, mapC);
+		scrollingText(500,bgH + 600,0,-1,"Music BY:","80px Times New Roman Italic","black", 500, 100, mapC);
+		scrollingText(500,bgH + 700,0,-1,"Weerthof - Sewing Song","50px Times New Roman Italic","black", 500, 100, mapC);
+		document.onmousedown = function(){};
+		
+		document.onkeydown = function(e){
+			if(e.keyCode in keyMap){
+				keyMap[e.keyCode]=true;
+			}
+			if(e.keyCode == 27){
+				window.clearInterval(timerID);
+				map3=null;
+				scrollVal=0;
+				loadMainMenu();
+				}
+		}
+		
+		document.onkeyup = function(e){
+			if(e.keyCode in keyMap){
+				keyMap[e.keyCode]=false;
+				}
+			
+		}
+		timerID = window.setInterval(function() { render(mapC); },tick);
+	}
+		
+	function loadGameOver(){
+		window.clearInterval(timerID);
+		map1=null;
+		map2=null;
+		map3=null;
+		mapT=null;
+		mapC=null;
+		scrollVal=0;
+		GameOver();
+		}
+		
+	function GameOver(){
+		map3 = createMap("plainBG.png", bgW,bgH);
+		createBGAnimation(250,bgH - 500, 0 ,0, ghost,200,200,map3);
+		textObjS(550,350,"Game Over.....","100px Times New Roman Italic","black", 100,50,map3);
+		textObjS(550,450,"Press escape to go to mainMenu.","50px Times New Roman Italic","black", 100,50,map3);
+		textObjS(550,550,"Press R to restart.","50px Times New Roman Italic","black", 100,50,map3);
+		timerID = window.setInterval(function() { render(map3); },tick);
+		document.onmousedown = function(){};
+		document.onkeydown = function(e){
+		if(e.keyCode == 27){
+				window.clearInterval(timerID);
+				map3=null;
+				scrollVal=0;
+				loadMainMenu();
+				}
+		if(e.keyCode == 82){
+				window.clearInterval(timerID);
+				map3=null;
+				scrollVal=0;
+				loadLevel1();
+				}
+		}
+		document.onkeyup = function(e){
+			if(e.keyCode in keyMap){
+				keyMap[e.keyCode]=false;
+				}
+		}
+	}
+			
+	
+
+</script>
+
+
+
+</head>
+
+<body = onload='init()'>
+<canvas id="myCanvas" width="1560px" height = "750px" align="center"></canvas>
+
+<audio id="breaking_boxes" src="audio/breaking_boxes.wav" preload="auto"></audio>
+<audio id="gasp" src="audio/gasp.wav" preload="auto"></audio>
+<audio id="turn_knob" src="audio/turn_knob.wav" preload="auto"></audio>
+<audio id="drag" src="audio/drag.wav" preload="auto"></audio>
+
+
+<audio id="mainSong" src="music/Weerthof_-_06_-_Sewing_Song.mp3" preload="auto"></audio>
+
+
+</body>
+</html>
